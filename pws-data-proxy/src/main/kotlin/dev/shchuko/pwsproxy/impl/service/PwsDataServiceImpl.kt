@@ -67,11 +67,14 @@ class PwsDataServiceImpl(
         }
     }
 
+    private val relaxedJson = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        allowStructuredMapKeys = true
+    }
     private val httpClient = HttpClient(CIO) {
         install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-            })
+            json(relaxedJson)
         }
     }
 
@@ -174,7 +177,14 @@ class PwsDataServiceImpl(
 
             return if (response.status.isSuccess()) {
                 logger.info("WindGuru responded with http success, parsing response code={}", response.status.value)
-                val body = response.body<WindGuruWeatherData>()
+                val bodyString = response.body<String>()
+                val body = when {
+                    bodyString == "[]" -> {
+                        logger.info("Special response, no data")
+                        WindGuruWeatherData(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
+                    }
+                    else -> relaxedJson.decodeFromString<WindGuruWeatherData>(bodyString)
+                }
                 logger.info("Parsed WindGuru response, loaded entries={}", body.unixtime.size)
                 body.toPwsMeasurements()
             } else {
