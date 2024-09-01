@@ -105,7 +105,7 @@ class PwsDataServiceImpl(
         coroutineScope.launch {
             while (isActive) {
                 val latestKnownMeasurementTimestamp =
-                    measurementHistory?.maxOf { it.timestamp } ?: Instant.DISTANT_PAST
+                    measurementHistory?.maxOfOrNull { it.timestamp } ?: Instant.DISTANT_PAST
 
 
                 val currentTime = Clock.System.now()
