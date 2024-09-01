@@ -137,7 +137,7 @@ internal fun WeatherScreen(viewModel: WeatherViewModel) {
     LaunchedEffect(Unit) {
         clearGraph(windGraphModelProducer)
         while (isActive) {
-            updateGraphModel(windGraphModelProducer, pwsState)
+            updateGraphModel(windGraphModelProducer, viewModel.pwsState)
             delay(5.seconds) // 30 seconds delay
         }
     }
@@ -215,7 +215,7 @@ internal fun WeatherScreen(viewModel: WeatherViewModel) {
                             .width(columnWidth),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(text = "NNE", style = TextStyle(fontSize = fontSize))
+                        Text(text = pwsState?.measurementData?.windDirectionDeg.toWindDirectionString(), style = TextStyle(fontSize = fontSize))
                         Text(text = "(${pwsState?.measurementData?.windDirectionDeg.toWindString()}\u00B0)", style = TextStyle(fontSize = fontSize2))
                     }
                     Column(
@@ -260,8 +260,6 @@ internal fun WeatherScreen(viewModel: WeatherViewModel) {
 fun Double?.toWindString(): String = this?.roundToInt()?.toString() ?: "--"
 fun Double?.toHumidityString(): String = when {
     this == null -> "--"
-    this > 0 -> "+${this.roundToInt()}"
-    this < 0 -> "-${this.absoluteValue.roundToInt()}"
     else -> "${this.roundToInt()}"
 } + "%"
 
@@ -493,7 +491,7 @@ fun CartesianChartModelProducer.Transaction.windLineSeries(now: Instant, wind: L
     lineSeries {
         var next = mutableListOf<WindDataPoint>()
         wind.forEach { point ->
-            if (point.timestamp - next.last().timestamp <= 5.minutes || next.isEmpty()) {
+            if (next.isEmpty() || point.timestamp - next.last().timestamp <= 4.minutes) {
                 next += point
             } else {
                 series(
@@ -503,6 +501,10 @@ fun CartesianChartModelProducer.Transaction.windLineSeries(now: Instant, wind: L
                 next = mutableListOf()
             }
         }
+        series(
+            x = next.map { (it.timestamp - now).inWholeSeconds },
+            y = next.map { it.knots },
+        )
     }
 }
 
@@ -524,4 +526,16 @@ fun MyTextClock() {
 fun getCurrentTime(): String {
     val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
     return sdf.format(Date())
+}
+
+fun Double?.toWindDirectionString(): String {
+    if (this == null) return "--"
+
+    val directions = arrayOf(
+        "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+        "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"
+    )
+
+    val index = ((this / 22.5) + 0.5).toInt() % 16
+    return directions[index]
 }
