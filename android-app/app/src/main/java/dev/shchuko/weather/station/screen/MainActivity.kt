@@ -355,7 +355,7 @@ fun WindHistoryChart(
                     guideline = null,
                     itemPlacer = remember { SameDistanceItemPlacer(6) },
                     valueFormatter = { x, _, _ ->
-                        val hours = -(x / 3600).toInt()
+                        val hours = -(x / 3600).roundToInt()
                         if (hours == 1) "$hours hour ago" else "$hours hours ago"
                     },
                     title = "wind speed",
